@@ -1,0 +1,26 @@
+{
+  "name": "readability-batch",
+  "version": "1.0.0",
+  "description": "Readability Batch Parser",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/whirledsol/readability-batch.git"
+  },
+  "author": "whirledsol",
+  "license": "UNLICENSED",
+  "bugs": {
+    "url": "https://github.com/whirledsol/readability-batch/issues"
+  },
+  "homepage": "https://github.com/whirledsol/readability-batch#readme",
+  "dependencies": {
+    "@mozilla/readability": "^0.4.1",
+    "jsdom": "^18.1.1",
+    "node-fetch": "^3.1.0",
+    "sanitize-filename": "^1.6.3"
+  }
+}
