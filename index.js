@@ -6,13 +6,16 @@ import util from 'util';
 import sanitize from 'sanitize-filename';
 
 const writeFileAsync = util.promisify(fs.writeFile);
+const sleep = (ms) => { return new Promise(resolve => setTimeout(resolve, ms)); }
 
 import urls from './data.js';
+const MAX_DELAY = 10.0;
 
-const batch = (urls) =>{
-	for(const url of urls){
+const batch = async (urls) =>{
+	for(const [index,url] of urls.entries()){
 		try{
-			process(url)
+			process(url,index)
+			await sleep(MAX_DELAY*Math.random())
 		}
 		catch(ex){
 			console.error(`ERROR for ${url}: ${JSON.stringify(ex)}\n`)
@@ -20,7 +23,7 @@ const batch = (urls) =>{
 	}
 };
 
-const process = async (url) =>{
+const process = async (url,index) =>{
 	var response  = await fetch(url)
 	const body = await response.text();
 	
@@ -32,7 +35,7 @@ const process = async (url) =>{
 	let article = reader.parse();
 	const {title,content} = article;
 
-	const path = `./out/${sanitize(title)}.html`;
+	const path = `./out/${index} - ${sanitize(title)}.html`;
 	await writeFileAsync(path,content);
 };
 
