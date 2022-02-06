@@ -4,10 +4,22 @@ import { JSDOM } from 'jsdom';
 import fs from 'fs';
 import util from 'util';
 import sanitize from 'sanitize-filename';
+import gTTS from 'gtts';
 const writeFileAsync = util.promisify(fs.writeFile);
 const sleep = (ms) => { return new Promise(resolve => setTimeout(resolve, ms)); }
 
 import * as req from './request.js';
+
+/**
+ * Uses gTTS to convert to an audio file
+ * @param {*} path 
+ * @param {*} content 
+ */
+const convertToAudio = async (path, content)=>{
+	var gtts = new gTTS(content, 'en');
+	await gtts.save(path);
+}
+
 
 
 /**
@@ -15,7 +27,14 @@ import * as req from './request.js';
  * @param {*} url 
  * @param {*} index 
  */
-const single = async (url,index = null) =>{
+const encodePage = async (req, url,index = null) =>{
+	const {
+		index_in_title = false,
+		tts = false,
+		optimize_tts = null,
+		tts_slow= false
+	} = req;
+
 	var response  = await fetch(url)
 	const body = await response.text();
 	
@@ -27,7 +46,7 @@ const single = async (url,index = null) =>{
 	let article = reader.parse();
 	
 	//extract from article
-	let {title,content} = article;
+	let {title,content,textContent} = article;
 
 	//ensure good title
 	title = ((title ||'') === '' || title === url) ? url.split('/').slice(-1)[0]: title;
@@ -37,9 +56,15 @@ const single = async (url,index = null) =>{
 	console.log('title',title)
 	
 	//save
-	let prefix = index === null ? ``: `${index} - `;
-	const path = `./out/${prefix}${sanitize(title)}.html`;
-	await writeFileAsync(path,content);
+	const prefix = index_in_title ? `${index} - ` : '';
+	const pathWithoutExt = `./out/${prefix}${sanitize(title)}`;
+
+	if(tts){
+		textContent = textContent.replace(optimize_tts,'');
+		await convertToAudio(`${pathWithoutExt}.mp3`,textContent, tts_slow);
+	}
+	
+	await writeFileAsync(`${pathWithoutExt}.html`,content);
 	console.log(`SUCCESS for ${url}`);
 };
 
@@ -48,14 +73,14 @@ const single = async (url,index = null) =>{
  * @param {*} urls 
  * @param {*} max_delay 
  */
- const batch = async (req) =>{
+ const encodeBatch = async (req) =>{
 	
 	//parse options
-	const {urls,max_delay,index_in_title} = req;
+	const {urls,max_delay,index_in_title,tts} = req;
 
 	for(const [index,url] of urls.entries()){
 		try{
-			single(url,index_in_title ? index: null)
+			encodePage(req,url,index)
 			await sleep(max_delay*Math.random());
 		}
 		catch(ex){
@@ -69,4 +94,4 @@ const single = async (url,index = null) =>{
 /**
  * START HERE
  */
-batch(req);
+ encodeBatch(req);

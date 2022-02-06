@@ -7,7 +7,7 @@ It is not intended to be abused for web scrapping purposes.
 
 ## Setup
 1. ```npm i```
-1. Populate a ```data.js``` file at root with the urls to parse. Use ```data.example.js``` as an example
+1. Populate a ```request.js``` file at root with the urls to parse. Use ```request.example.js``` as an example
 1. ```npm start```
 
 

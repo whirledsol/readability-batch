@@ -1,0 +1,1 @@
+export const WIKIPEDIA = /(\[\d+\](:\s\d+–\d+)?)|(\[edit\])/g;
