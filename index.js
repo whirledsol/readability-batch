@@ -15,9 +15,13 @@ import * as req from './request.js';
  * @param {*} path 
  * @param {*} content 
  */
-const convertToAudio = async (path, content)=>{
+const convertToAudio = (path, content)=>{
 	var gtts = new gTTS(content, 'en');
-	await gtts.save(path);
+	return new Promise(resolve=>{
+		gtts.save(path,cb=>{
+			resolve();
+		});
+	});
 }
 
 
@@ -34,7 +38,7 @@ const encodePage = async (req, url,index = null) =>{
 		optimize_tts = null,
 		tts_slow= false
 	} = req;
-
+	console.log(`> STARTING ${url}`);
 	var response  = await fetch(url)
 	const body = await response.text();
 	
@@ -53,7 +57,7 @@ const encodePage = async (req, url,index = null) =>{
 	//add metadata on top
 	content = `<h1>${title}</h1><h5>Original: <a target="_blank" href="${url}">${url}</a></h5>${content}`;
 	
-	console.log('title',title)
+	console.log('\tParsed Content with Title',title)
 	
 	//save
 	const prefix = index_in_title ? `${index} - ` : '';
@@ -61,11 +65,15 @@ const encodePage = async (req, url,index = null) =>{
 
 	if(tts){
 		textContent = textContent.replace(optimize_tts,'');
+
+		//fix to pausing from Jakob Hoefflin https://stackoverflow.com/questions/40795103/text-to-speech-library-issue-with-pauses
+		textContent = textContent.trim().replace(/\s\s+/g, ' '); 
+
 		await convertToAudio(`${pathWithoutExt}.mp3`,textContent, tts_slow);
 	}
 	
 	await writeFileAsync(`${pathWithoutExt}.html`,content);
-	console.log(`SUCCESS for ${url}`);
+	console.log(`> SUCCESS for ${url}`);
 };
 
 /**
@@ -80,8 +88,8 @@ const encodePage = async (req, url,index = null) =>{
 
 	for(const [index,url] of urls.entries()){
 		try{
-			encodePage(req,url,index)
-			await sleep(max_delay*Math.random());
+			encodePage(req,url,index); //No wait so we can do this asyncronously
+			await sleep(max_delay*Math.random()); //add a delay so it doesn't look like we are scraping. We are reading.
 		}
 		catch(ex){
 			console.error(`ERROR for ${url}: ${JSON.stringify(ex)}\n`)
