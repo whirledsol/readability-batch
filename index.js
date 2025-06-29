@@ -1,5 +1,5 @@
 import { Readability } from '@mozilla/readability';
-import fetch from 'node-fetch';
+import puppeteer from 'puppeteer';
 import { JSDOM } from 'jsdom';
 import fs from 'fs';
 import util from 'util';
@@ -31,22 +31,29 @@ const convertToAudio = (path, content)=>{
  * @param {*} url 
  * @param {*} index 
  */
-const encodePage = async (req, url,index = null) =>{
+const encodePage = async (req, page, url, index = null) =>{
 	const {
 		index_in_title = false,
 		tts = false,
 		optimize_tts = null,
-		tts_slow= false
+		tts_slow= false,
+		readability_options = null
 	} = req;
 	console.log(`> STARTING ${url}`);
-	var response  = await fetch(url)
-	const body = await response.text();
 	
-	var doc = new JSDOM(body, {
+	//headless browser
+	await page.goto(url, {
+		waitUntil: 'networkidle2',
+	});
+	const body = await page.evaluate(() => document.querySelector('*').outerHTML);
+	//console.log('body',body);
+	
+	let dom = new JSDOM(body, {
 		url: url
 	});
 	
-	let reader = new Readability(doc.window.document);
+	
+	let reader = new Readability(dom.window.document, readability_options);
 	let article = reader.parse();
 	
 	//extract from article
@@ -55,8 +62,11 @@ const encodePage = async (req, url,index = null) =>{
 	//ensure good title
 	title = ((title ||'') === '' || title === url) ? url.split('/').slice(-1)[0]: title;
 	//add metadata on top
-	content = `<h1>${title}</h1><h5>Original: <a target="_blank" href="${url}">${url}</a></h5>${content}`;
-	
+	content = `<h1>${title}</h1>
+	<h5>Source: <a target="_blank" href="${url}">${url}</a></h5>
+	<h5>Retrieved on ${new Date().toString()}</h5>
+	${content}`;
+
 	console.log('\tParsed Content with Title',title)
 	
 	//save
@@ -83,13 +93,16 @@ const encodePage = async (req, url,index = null) =>{
  */
  const encodeBatch = async (req) =>{
 	
+	const browser = await puppeteer.launch();
+	const page = await browser.newPage();
+	await page.setViewport({width: 1920, height: 1080});
 	//parse options
 	const {urls,max_delay,index_in_title,tts} = req;
 
 	for(const [index,url] of urls.entries()){
 		try{
-			encodePage(req,url,index); //No wait so we can do this asyncronously
-			await sleep(max_delay*Math.random()); //add a delay so it doesn't look like we are scraping. We are reading.
+			encodePage(req,page,url,index); //No wait so we can do this asyncronously
+			await sleep(1000+max_delay*Math.random()); //add a delay so it doesn't look like we are scraping. We are reading.
 		}
 		catch(ex){
 			console.error(`ERROR for ${url}: ${JSON.stringify(ex)}\n`)
